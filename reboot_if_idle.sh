@@ -13,6 +13,7 @@
 LOGFile=$1
 DIFFHours=$2
 STARTCommand=$3
+PLAYSound=$4
 TelErrors=0
 
 echo "Starting: reboot_if_idle.sh"
@@ -45,7 +46,8 @@ if [ "$TelErrors" -lt "1" ]; then
             message=$1
             printonscreen=$2
 
-            LOGVANDAAG=`date +%s`
+            LOGVANDAAG=`date +'%a %d %b %Y %T'`
+
             echo "[$LOGVANDAAG] $message" >> $LOGFile
 
             if [ "$printonscreen"  -gt "0" ]; then
@@ -54,7 +56,7 @@ if [ "$TelErrors" -lt "1" ]; then
           }
 
         if [ "$DIFFHours" != "" ]; then
-          if [ "$DIFFHours" -gt "12" ]; then
+          if [ "$DIFFHours" -gt "0" ]; then
             function_log "Difference in hours : $DIFFHours" 1
           else
             function_log "Difference in hours : Unknown ($DIFFHours)" 1
@@ -77,6 +79,18 @@ if [ "$TelErrors" -lt "1" ]; then
           function_log "Command to Start : Unknown ($STARTCommand)" 1
           TelErrors=$(( $TelErrors + 1 ))
         fi
+
+        if [ "$PLAYSound" != "" ]; then
+          if [ "$PLAYSound" -gt "0" ]; then
+            function_log "Play Sound on action : Yes" 1
+          else
+            function_log "Play Sound on action : No" 1
+          fi
+        else
+          function_log "Play Sound on action : No" 1
+          PLAYSound=0
+        fi
+
 else
   echo "We cannot perform other functions without a log file"
 fi
@@ -84,10 +98,10 @@ fi
 if [ "$TelErrors" -gt "0" ]; then
   echo ""
   echo "Errors found! Usage:"
-  echo "reboot_if_idle.sh <Logfile (FullPath + Filename)> <Difference in Hours> <Command to start>"
+  echo "reboot_if_idle.sh <Logfile (FullPath + Filename)> <Difference in Hours (Integer)> <Command to start> <Play sound on action (0 = No / 1 = Yes)>"
   echo ""
   echo "Example:"
-  echo "/usr/local/bin/reboot_if_idle.sh "/var/log/reboot_if_idle.log" "120" "/bin/echo \"\msl16oldcd4mll8pcb-agf+4.g4\" > /dev/speaker""
+  echo '/usr/local/bin/reboot_if_idle.sh "/var/log/reboot_if_idle.log" "120" "/bin/echo "Reboot!" "1"'
 else
         # Capture command output into positional parameters
         set -- $(lastlogin -t)  # Example: Captures `ls` output
@@ -137,12 +151,12 @@ else
 
               function_log "Verschil in tijd (Hours:Minutes:Seconds): $HOURS:$MIN:$SEC --> Delta Hours : $HOURS -LessThan- Lowest Delta : $LOWESTDelta ?" 0
 
-              if [ "$DIFFHours" -lt "$HOURS" ]; then
+              if [ "$HOURS" -lt "$LOWESTDelta" ]; then
                 ## Delta is less than maximum hours no login activity, note the lowest number
                 #
                 if [ "$HOURS" -lt "$LOWESTDelta" ]; then
                         LOWESTDelta=$HOURS
-                        function_log "Lowest number of hours not logged in with any user name is changed to: $LOWESTDelta" 0
+                        function_log "Lowest number of hours not logged in with any user name is changed to: $LOWESTDelta" 1
                 fi
               fi
               ## For trouble shooting
@@ -176,6 +190,13 @@ else
           ## Lowest delta hours is bigger than miximum different hours, so we need to todo the assignment
           #
           function_log "Lowest Delta hours is: $LOWESTDelta, that !more! than the maximum number of Hours nodbody has logged on in to this system: $DIFFHours. That is a BAD thing! Execute command: $STARTCommand" 1
+
+          ## Do we need to play a sounf on action?
+          #
+          if [ "$PLAYSound" -gt "0" ]; then
+                eval "kldload speaker"
+                eval '/bin/echo "\msl16old" > /dev/speaker'
+          fi
 
           ## Start command
           #
